@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cleantrackr</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Adding Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        canvas {
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>I want to quit <input type="text" id="addiction" placeholder="Enter addiction"></h1>
+        <input type="date" id="startDate"></input>
+        <button onclick="calculateDays()">Start Tracking</button>
+        <p id="daysClean"></p>
+        <p id="averageRelapse"></p>
+        <p id="moneySaved"></p>
+        <!-- Chart containers -->
+        <canvas id="progressChart" width="400" height="200"></canvas>
+        <!-- Info section -->
+        <div id="info">
+            <h2>Information</h2>
+            <h3>National Helplines</h3>
+            <ul>
+                <li><strong>Beyondblue</strong>: 1300 22 4636 (Mental Health Support)</li>
+                <li><strong>Alcoholics Anonymous Australia</strong>: 1300 22 22 22 (Alcohol Addiction Support)</li>
+                <li><strong>Quitline</strong>: 13 78 48 (Smoking Cessation)</li>
+                <li><strong>Family Drug Support</strong>: 1300 368 186 (Support for Families Affected by Drug Use)</li>
+                <li><strong>Lifeline Australia</strong>: 13 11 14 (Crisis Support and Suicide Prevention)</li>
+                <li><strong>Gamblers Anonymous Australia</strong>: 03 9696 6108 (Gambling Addiction Support)</li>
+                <!-- Add more helplines as needed -->
+            </ul>
+            <h3>Tips for Quitting</h3>
+                <ul>
+                    <li>Seek professional help and support from friends and family.</li>
+                    <li>Set achievable and specific goals for quitting.</li>
+                    <li>Identify triggers and develop coping strategies to deal with cravings.</li>
+                    <li>Stay physically active to reduce stress and improve mood.</li>
+                    <li>Reward yourself for milestones achieved in your journey to quit.</li>
+                    <li>Stay engaged in hobbies and activities that bring joy and fulfillment.</li>
+                    <li>Connect with others who have successfully quit for encouragement and inspiration.</li>
+                    <li>Practice relaxation techniques such as deep breathing and meditation to manage stress.</li>
+                    <li>Be patient and kind to yourself, setbacks are part of the process, learn from them and keep moving forward.</li>
+                </ul>
+            </div>
+            <h3>Statistics</h3>
+            <ul>
+                <li>According to recent studies, over 2.5 million Australians are daily smokers.</li>
+                <li>Alcohol misuse is estimated to cost Australia billions of dollars each year.</li>
+                <li>An estimated 3.1% of Australians aged 14 years and over have used methamphetamine in the past year.</li>
+                <li>Over 3 million Australians are reported to have tried vaping at least once.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Object to map each addiction to its corresponding daily cost
+        const addictionDailyCost = {
+            "cigarettes": 5,
+            "meth": 50,
+            "coke": 80,
+            "vaping": 3,
+            "alcohol": 10,
+            "porn": 0 // Placeholder, you can add more addictions and their costs
+        };
+
+        window.onload = function() {
+            var storedAddiction = localStorage.getItem('addiction');
+            if (storedAddiction) {
+                document.getElementById("addiction").value = storedAddiction;
+            }
+
+            var storedDate = localStorage.getItem('startDate');
+            if (storedDate) {
+                document.getElementById("startDate").value = storedDate;
+                calculateDays();
+            } else {
+                var today = new Date();
+                var dd = String(today.getDate()).padStart(2, '0');
+                var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+                var yyyy = today.getFullYear();
+                today = yyyy + '-' + mm + '-' + dd;
+                document.getElementById("startDate").value = today;
+            }
+
+            // Update the chart every minute
+            setInterval(function() {
+                var today = new Date();
+                var storedDate = new Date(document.getElementById("startDate").value);
+                if (today.getDate() !== storedDate.getDate()) {
+                    calculateDays();
+                }
+            }, 60000); // 60000 milliseconds = 1 minute
+        };
+
+        function calculateDays() {
+            var addiction = document.getElementById("addiction").value;
+            var startDate = new Date(document.getElementById("startDate").value);
+            var today = new Date();
+            var differenceInTime = today.getTime() - startDate.getTime();
+            var differenceInDays = Math.round(differenceInTime / (1000 * 3600 * 24));
+            document.getElementById("daysClean").innerText = differenceInDays + " days clean from " + addiction;
+            localStorage.setItem('addiction', addiction);
+            localStorage.setItem('startDate', startDate.toISOString().split('T')[0]);
+
+            // Calculate metrics
+            var averageRelapse = calculateAverageRelapse(startDate, today);
+
+            document.getElementById("averageRelapse").innerText = "Average days between relapses: " + averageRelapse;
+
+            // Update progress chart
+            updateProgressChart(startDate, today);
+        }
+
+        // Function to update the progress chart
+        function updateProgressChart(startDate, endDate) {
+            var ctx = document.getElementById('progressChart').getContext('2d');
+            var myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Start of Journey', '90 Days Goal', 'Current Progress'],
+                    datasets: [{
+                        label: '',
+                        data: getChartData(startDate, endDate),
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#4CAF50',
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Function to get chart data
+        function getChartData(startDate, endDate) {
+            var data = [];
+            var totalDays = 90;
+            var elapsedDays = getDaysElapsed(startDate, endDate);
+            var percentageCompleted = (elapsedDays / totalDays) * 100;
+            data.push(0); // Start of Journey
+            data.push(100); // 90 Days Goal
+            data.push(percentageCompleted); // Current Progress
+            return data;
+        }
+
+        // Function to calculate days elapsed
+        function getDaysElapsed(startDate, endDate) {
+            var differenceInTime = endDate.getTime() - startDate.getTime();
+            var differenceInDays = Math.round(differenceInTime / (1000 * 3600 * 24));
+            return differenceInDays;
+        }
+
+        // Function to calculate average days between relapses
+        function calculateAverageRelapse(startDate, endDate) {
+            // Example implementation, you may replace this with actual data or logic
+            var totalRelapses = 5; // Total number of relapses
+            var totalDays = getDaysElapsed(startDate, endDate);
+            return totalDays / totalRelapses;
+        }
+
+        // Function to calculate money saved based on daily cost and days clean
+        function calculateMoneySaved(dailyCost, daysClean) {
+            return dailyCost * daysClean;
+        }
+    </script>
+</body>
+</html>
